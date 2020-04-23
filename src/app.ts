@@ -2,6 +2,7 @@ import dotenv from 'dotenv'
 import request from 'request-promise'
 
 import express, {
+  Request,
   Response,
   Application,
 } from 'express'
@@ -12,16 +13,13 @@ const ALCHEMY_BASE_URL = `https://eth-mainnet.alchemyapi.io/v2/${process.env.ALC
 
 const app: Application = express()
 
-app.post('/eth_blockNumber', async function (_, res: Response) {
+app.use(express.json())
+
+app.post('/', async function (req: Request, res: Response) {
   const result = await request({
     method: 'POST',
     uri: ALCHEMY_BASE_URL,
-    body: {
-      'jsonrpc': "2.0",
-      'method': "eth_blockNumber",
-      'params': [],
-      'id': 83,
-    },
+    body: req.body,
     json: true,
   })
 
