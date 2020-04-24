@@ -1,6 +1,10 @@
-import WebSocket from 'ws'
+import debug from 'debug'
 import dotenv from 'dotenv'
-import { v4 as uuidv4 } from 'uuid'
+
+// need to configure process.env ASAP
+dotenv.config()
+
+const logInfo = debug('app:info:server')
 
 import express, {
   Request,
@@ -8,75 +12,26 @@ import express, {
   Application,
 } from 'express'
 
-dotenv.config()
-
-const queries: {
-  [key: string]: void | {
-    resolve: Function;
-    reject: Function;
-  };
-} = {}
-
-const ALCHEMY_URL = `wss://eth-mainnet.ws.alchemyapi.io/v2/${process.env.ALCHEMYAPI_KEY}`
-
-const alchemy: WebSocket = new WebSocket(ALCHEMY_URL)
-
-alchemy.on('open', function open() {
-  console.log('Alchemy API websocket connection has been opened')
-})
-
-alchemy.on('message', function incoming(data: WebSocket.Data) {
-  const result = JSON.parse(data.toString())
-
-  if (!(result && result.id)) {
-    return
-  }
-
-  const promise = queries[result.id]
-
-  if (promise) {
-    promise.resolve(result)
-    queries[result.id] = undefined
-  }
-})
-
-interface ETHRPCPayload {
-  params: any[];
-  jsonrpc: '2.0';
-  method: string;
-  id: number | string;
-}
-
-interface ETHRPCResponse {
-  jsonrpc: '2.0';
-  id: number | string;
-  result: string | object;
-}
-
-function sendAlchemyQuery(payload: ETHRPCPayload): Promise<ETHRPCResponse> {
-  const queryId = uuidv4()
-  payload.id = queryId
-
-  return new Promise((resolve, reject) => {
-    queries[queryId] = {
-      resolve,
-      reject,
-    }
-
-    alchemy.send(JSON.stringify(payload))
-  })
-}
+import { getWS } from './ws'
+import { addQuery } from './queue'
 
 const app: Application = express()
 
 app.use(express.json())
 
 app.post('/', async function (req: Request, res: Response) {
-  const result = await sendAlchemyQuery(req.body)
+  if (!getWS()) {
+    res.sendStatus(500)
+
+    return
+  }
+
+  const job = await addQuery(req.body)
+  const result = await job.finished()
 
   res.send(result)
 })
 
 app.listen(3000, () => {
-  console.log('Server is listening on localhost:3000')
+  logInfo('Server is listening on localhost:3000')
 })
