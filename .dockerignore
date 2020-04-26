@@ -1,0 +1,9 @@
+.cache
+.git
+.idea
+.vscode
+.tmp
+dist
+Dockerfile
+docker-compose.yml
+node_modules
