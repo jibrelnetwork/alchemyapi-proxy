@@ -1,0 +1,22 @@
+---
+version: "3"
+services:
+  redis:
+    image: redis:4.0.14-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+
+  alchemyapi-proxy:
+    image: alchemyapi-proxy:develop
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - DEBUG=false
+      - ALCHEMYAPI_KEY=
+      - ALCHEMYAPI_CONCURRENT_LIMIT=5
+      - ALCHEMYAPI_QPS_LIMIT=300
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    depends_on:
+      - redis
