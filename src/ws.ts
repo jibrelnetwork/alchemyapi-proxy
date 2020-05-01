@@ -11,13 +11,21 @@ const logInfo = debug('app:info:ws')
 const logDebug = debug('app:debug:ws')
 const logError = debug('app:error:ws')
 
-const WS_CONNECT_INTERVAL = 1000 * 5
+const ONE_SECOND = 1000
+const WS_PING_INTERVAL = 30 * ONE_SECOND
+const WS_CONNECT_INTERVAL = 5 * ONE_SECOND
 const API_PROVIDER_URL = `wss://eth-mainnet.ws.alchemyapi.io/v2/${process.env.ALCHEMYAPI_KEY}`
 
 let ws: WebSocket | null = null
+let pingIntervalId: NodeJS.Timeout | null = null
 
 const onOpen = (): void => {
   logInfo('API websocket connection has been opened')
+  pingIntervalId = setInterval(() => ws?.ping(), WS_PING_INTERVAL)
+}
+
+const onPing = (): void => {
+  ws?.pong()
 }
 
 const onMessage = (data: WebSocket.Data): void => {
@@ -83,6 +91,7 @@ const connect = async (): Promise<WebSocket> => {
   const instance = new WebSocket(API_PROVIDER_URL)
 
   instance.on('open', onOpen)
+  instance.on('ping', onPing)
   instance.on('message', onMessage)
   instance.on('error', onError)
   instance.on('close', onClose)
@@ -95,8 +104,12 @@ const connect = async (): Promise<WebSocket> => {
 const reconnect = async (): Promise<WebSocket> => {
   logDebug('WebSocket is going to reconnect')
 
+  if (pingIntervalId !== null) {
+    clearInterval(pingIntervalId)
+  }
+
   // soft clean of instance before shutdown
-  if (ws && (ws.readyState === ws.OPEN)) {
+  if (ws) {
     ws.removeAllListeners()
     ws.close()
   }
