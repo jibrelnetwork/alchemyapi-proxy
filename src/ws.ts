@@ -1,5 +1,6 @@
 import debug from 'debug'
 import WebSocket from 'ws'
+import BluebirdPromise from 'bluebird'
 
 import {
   getQuery,
@@ -9,11 +10,11 @@ import {
 const logInfo = debug('app:info:ws')
 const logDebug = debug('app:debug:ws')
 const logError = debug('app:error:ws')
-const WS_RECONNECT_INTERVAL = 1000 * 5
+
+const WS_CONNECT_INTERVAL = 1000 * 5
 const API_PROVIDER_URL = `wss://eth-mainnet.ws.alchemyapi.io/v2/${process.env.ALCHEMYAPI_KEY}`
 
 let ws: WebSocket | null = null
-const checkConnectionOpen = (): boolean => !!ws && (ws.readyState === ws.OPEN)
 
 const onOpen = (): void => {
   logInfo('API websocket connection has been opened')
@@ -57,7 +58,28 @@ const onClose = (code: number, reason: string): void => {
   reconnect()
 }
 
-const connect = (): void => {
+const waitConnection = async (): Promise<WebSocket> => {
+  if (ws) {
+    if ((ws.readyState === ws.OPEN)) {
+      return ws
+    } else if (ws.readyState === ws.CONNECTING) {
+      logDebug('WebSocket is waiting for establishing the connection')
+
+      return BluebirdPromise.delay(500).then(waitConnection)
+    }
+  }
+
+  throw new Error('Connecting attempt to WebSocket server has been failed')
+}
+
+const connect = async (): Promise<WebSocket> => {
+  logDebug('WebSocket is going to establish new connection')
+
+  if (ws && (ws.readyState === ws.CONNECTING)) {
+    return waitConnection()
+  }
+
+  ws = null
   const instance = new WebSocket(API_PROVIDER_URL)
 
   instance.on('open', onOpen)
@@ -66,27 +88,31 @@ const connect = (): void => {
   instance.on('close', onClose)
 
   ws = instance
+
+  return waitConnection()
 }
 
-const reconnect = (): void => {
-  if (!(ws && checkConnectionOpen())) {
-    return
+const reconnect = async (): Promise<WebSocket> => {
+  logDebug('WebSocket is going to reconnect')
+
+  // soft clean of instance before shutdown
+  if (ws && (ws.readyState === ws.OPEN)) {
+    ws.removeAllListeners()
+    ws.close()
   }
 
-  ws.removeAllListeners()
-  ws.close()
-
-  setTimeout(connect, WS_RECONNECT_INTERVAL)
+  return BluebirdPromise.delay(WS_CONNECT_INTERVAL).then(connect)
 }
 
 connect()
 
-const getWS = (): WebSocket | null => {
-  if (!checkConnectionOpen()) {
-    return null
+const getWS = async (): Promise<WebSocket> => {
+  if (ws && (ws.readyState === ws.OPEN)) {
+    return ws
   }
 
-  return ws
+  // just wait, it should be resolved once 'close' event is happened
+  return waitConnection()
 }
 
 export { getWS }
