@@ -44,14 +44,13 @@ const requestQueue: Queue.Queue = new Queue('requestQueue', {
 
 requestQueue.setMaxListeners(1000)
 
-requestQueue.process(CONCURRENT_LIMIT, (job: Queue.Job<ETHRPCPayload>): Promise<ETHRPCResponse> => {
+requestQueue.process(
+  CONCURRENT_LIMIT,
+  async (job: Queue.Job<ETHRPCPayload>,
+): Promise<ETHRPCResponse> => {
+  const ws = await getWS()
+
   return new Promise((resolve, reject) => {
-    const ws = getWS()
-
-    if (!ws) {
-      throw new Error('WebSocket connection is not established')
-    }
-
     const {
       id,
       data,

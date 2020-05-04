@@ -30,6 +30,8 @@ npm run dev
 ## Environment
 For environment variables it is necessary to create `.env` file in the root dir:
 ```
+PORT=<api server port (default: 3000)>
+CORS_ORIGIN=<CORS origin (can be omitted for development)>
 ALCHEMYAPI_CONCURRENT_LIMIT=<concurrent requests>
 ALCHEMYAPI_QPS_LIMIT=<requests per second>
 ALCHEMYAPI_KEY=<a key for accessing of the alchemyapi.io>
