@@ -37,4 +37,5 @@ ALCHEMYAPI_QPS_LIMIT=<requests per second>
 ALCHEMYAPI_KEY=<a key for accessing of the alchemyapi.io>
 REDIS_HOST=<redis host>
 REDIS_PORT=<redis port>
+REDIS_PASSWORD=<redis password>
 ```
