@@ -33,6 +33,7 @@ const queries: Queries = {}
 const requestQueue: Queue.Queue = new Queue('requestQueue', {
   redis: {
     host: process.env.REDIS_HOST,
+    password: process.env.REDIS_PASSWORD,
     port: parseInt(process.env.REDIS_PORT || '', 10),
   },
   limiter: {
